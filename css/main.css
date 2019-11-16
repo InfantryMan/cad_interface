@@ -1,0 +1,27 @@
+body {
+	font-family: 'Rubik', sans-serif;
+}
+
+.header {
+	padding: 5px;
+	text-align: center;
+}
+
+.header__text {
+	margin-bottom: 10px;
+
+    color: black;
+	font-weight: bold;
+	font-size: 1em;
+}
+
+#canvas {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: auto; 
+
+    background: grey;
+}

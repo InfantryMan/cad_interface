@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" type="text/css" href="css/main.css">
+    <title>Cad system</title>
+  </head>
+  <body>
+    <header class="header">
+        <div class="header__text">CAD system</div>
+        <hr/>
+    </header>
+
+    <canvas id="canvas" 
+        width="1280"
+        height="800"
+    >
+        Обновите браузер
+    </canvas>
+
+    <!-- <button id="button_activate_solver">Activate Solver</button> -->
+    <button id="button_default">Default</button>
+    <button id="button_moving">Перемещение</button>
+    <button id="button_lines">Отрезки</button>
+    <button id="button_points">Точки</button>
+    <button id="button_horizontal_line">Горизонтальность прямой</button>
+    <button id="button_vertical_line">Вертикальность прямой</button>
+    <button id="button_parallelism">Параллельность двух прямых</button>
+    <button id="button_perpendicularity">Перпендикулярность двух прямых</button>
+    <button id="button_distance">Расстояние между 2 точками</button>
+    <button id="button_angle">Угол между двумя прямыми</button>
+    <button id="button_point_to_line">Принадлежность точки прямой</button>
+
+    <script type="text/javascript">
+
+      var Module = {onRuntimeInitialized: function(){}};
+
+    </script>
+  
+  </body>
+  <script src="dist/bundle.js"></script>
+  <script src="scripts/emjs/Solver.js"></script>
+</html>
