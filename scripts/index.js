@@ -5,6 +5,7 @@ import Constraint from "./Constraint";
 import ConstraintTypes from "./ConstraintTypes";
 import SolverJson from "./SolverJson";
 
+// Получаем javascript объекты HTML элементов по их id
 const canvas = document.getElementById("canvas");
 const button_lines = document.getElementById("button_lines");
 const button_points = document.getElementById("button_points");
@@ -17,8 +18,10 @@ const button_angle = document.getElementById("button_angle");
 const button_point_to_line = document.getElementById("button_point_to_line");
 const button_moving = document.getElementById("button_moving");
 
+// Получаем контекст для рисования
 const ctx = canvas.getContext('2d');
 
+// Состояния работы интерфейса
 const ModesEnum = {
     default: 1,
     line: 2,
@@ -43,55 +46,65 @@ const ModesEnum = {
     limitations_point_to_line_second: 15,
 
     moving: 16,
-    moving_down_point: 17
+    moving_down_point: 17,
+    moving_down_line: 18
 };
   
-let epsDist = 10;
-let epsDistMove = 9;
 
-let Points = new Map();
-let Lines = [];
-let Constraints = [];
+let epsDist = 10;       // максимальное расстояние при выборе точки и отрезка
+let epsDistMove = 9;    // аналогично, но только для перемещения точек и отрезков
 
-let mode = ModesEnum.default, prevMode;
+let Points = new Map(); // ассоциативный контейнер, где ключ - это id точки, а значение - это объект класса Point
+let Lines = [];         // массив из объектов класса Line
+let Constraints = [];   // массив из объектов класса Constraint
 
-let clickPoint, prevPoint;
-let clickLine, prevLine;
+let mode = ModesEnum.default, prevMode; // mode - текущее состояние, prevMode - предыдущее состояние
 
-let movingPoint;
+let clickPoint, prevPoint;  // clickPoint - точка, на которую нажали, prevPoint - предыдущая точка
+let clickLine, prevLine;    // аналогично
 
-let canvasHeight = window.innerHeight / 5 * 4;
-let canvasWidth  = window.innerWidth / 5 * 4;
+let movingPoint, movingLine;    // movingPoint - перемещаемая точка, movingLine - перемещаемая линия
+
+let canvasHeight = window.innerHeight / 5 * 4;  // высота канваса
+let canvasWidth  = window.innerWidth / 5 * 4;   // ширина канваса
 
 canvas.width  = canvasWidth;
 canvas.height = canvasHeight;
 
-let canvasTopLeft = new Point(canvas.getBoundingClientRect().x, canvas.getBoundingClientRect().y, false);
+// Координаты верхней левой точки канваса, необходимо для получения относительных координат на канвасе
+let canvasTopLeft = new Point(canvas.getBoundingClientRect().x, canvas.getBoundingClientRect().y, false); 
 
-// При изменение размеров окна canvas уменьшается
-// window.addEventListener("resize", () => {
-//     canvas.width  = window.innerWidth / 5 * 4;
-//     canvas.height = window.innerHeight / 5 * 4;
-//     canvasTopLeft = new Point(canvas.getBoundingClientRect().x, canvas.getBoundingClientRect().y, false);
+/*  
+    Данный код меняет размер канваса при изменении размеров окна. При желании его можно раскоментить, но тогда
+    надо закомментить следующий обработчик 
+*/
+/*
+window.addEventListener("resize", () => {
+    canvas.width  = window.innerWidth / 5 * 4;
+    canvas.height = window.innerHeight / 5 * 4;
+    canvasTopLeft = new Point(canvas.getBoundingClientRect().x, canvas.getBoundingClientRect().y, false);
 
-//     let deltaHeight = (canvas.height - canvasHeight);
-//     let deltaWidth  = (canvas.width - canvasWidth);
+    let deltaHeight = (canvas.height - canvasHeight);
+    let deltaWidth  = (canvas.width - canvasWidth);
 
-//     canvasHeight = canvas.height;
-//     canvasWidth  = canvas.width;
+    canvasHeight = canvas.height;
+    canvasWidth  = canvas.width;
 
-//     for (let point of Points) {
-//         if (point[1].x + deltaWidth > 0)  point[1].x += deltaWidth;
-//         if (point[1].y + deltaHeight > 0) point[1].y += deltaHeight;
-//     }
+    for (let point of Points) {
+        if (point[1].x + deltaWidth > 0)  point[1].x += deltaWidth;
+        if (point[1].y + deltaHeight > 0) point[1].y += deltaHeight;
+    }
 
-//     draw();
-// });
+    draw();
+});
+*/
 
+/* Обработчик на изменение размеров окна браузера. В этом случае необходимо переопределить координаты верхнего левого угла канваса */
 window.addEventListener("resize", () => {
     canvasTopLeft = new Point(canvas.getBoundingClientRect().x, canvas.getBoundingClientRect().y, false);
 });
 
+// Очищает канвас
 const clear = () => {
     ctx.save();
     ctx.fillStyle = "grey";
@@ -99,6 +112,7 @@ const clear = () => {
     ctx.restore();
 }
 
+// Отрисовывает на канвасе все точки и линии
 const draw = () => {
     clear();
     for (let p of Points.values()) {
@@ -109,26 +123,30 @@ const draw = () => {
     });
 }
 
+// Рисует линию от prevPoint до clickPoint
 const onDrawLine = () => {
     const line = new Line(prevPoint, clickPoint);
     Lines.push(line);
     line.draw(ctx);
 }
 
+// Скалярное произведение
 const dot = (point1, point2) => { return point1.x * point2.x + point1.y * point2.y; }
 
+// Расстояние между двумя точками
 const dist = (point1, point2) => { 
     const dx = point2.x - point1.x; 
     const dy = point2.y - point1.y; 
     return Math.sqrt(dx * dx + dy * dy);
 }
 
+// Расстояние от точки P до вектоа P0P1
 const distToLine = (P, P0, P1) => {
     const numerator = (P1.y - P0.y) * P.x - (P1.x - P0.x) * P.y + P1.x * P0.y - P1.y * P0.x;
     return Math.abs(numerator) / dist(P0, P1); 
 }
 
-
+// Проверяет, имеется ли точка с pointId в ограничении constraint
 const checkPointId = (pointId, constraint) => {
     if (pointId === constraint.point1.id || 
         pointId === constraint.point2.id || 
@@ -139,6 +157,7 @@ const checkPointId = (pointId, constraint) => {
     return false;
 }
 
+// Возвращает массив pointId точек ограничения constraint
 const getConstraintPointsIds = (constraint) => {
     const pointsIds = [];
     if (constraint.point1 && constraint.point1.id) { pointsIds.push(constraint.point1.id); }
@@ -148,6 +167,7 @@ const getConstraintPointsIds = (constraint) => {
     return pointsIds;
 }
 
+// Отмечает просмотренные ограничения полем watched = true
 const noteRelatedRestrictions = (newConstraint) => {
     newConstraint.watched = true;
     const newConstraintPointIds = getConstraintPointsIds(newConstraint);
@@ -160,6 +180,7 @@ const noteRelatedRestrictions = (newConstraint) => {
     }
 }
 
+// Возвращает вершины, связанные с ограничением newConstraint
 const getConnectedPointsAndConstraints = (newConstraint) => {
     noteRelatedRestrictions(newConstraint);
     const resultConstraints = [];
@@ -177,9 +198,9 @@ const getConnectedPointsAndConstraints = (newConstraint) => {
     };
 }
 
+// Возвращает ближайшую точку minPoint и расстояние до нее minS от точки clickPoint
 const getNearestPoint = (clickPoint) => {
     let S, minS = Number.MAX_SAFE_INTEGER, minPoint;
-
     Points.forEach(point => {
         S = dist(clickPoint, point);
         if (S < minS) {
@@ -187,10 +208,10 @@ const getNearestPoint = (clickPoint) => {
             minPoint = point;
         }
     });
-
     return {minPoint, minS};
 }
     
+// Возвращает ближайшую линию minLine и расстояние до нее minS от точки clickPoint
 const getNearestLine = (clickPoint) => {
     let S, minS = Number.MAX_SAFE_INTEGER, minLine;
 
@@ -221,6 +242,7 @@ const getNearestLine = (clickPoint) => {
     return {minLine, minS};
 }
 
+// Возвращает массивы точек и ограничений в формате, необходимом для Solver
 const getPointsAndConstraintsForSolver = (pointsIds, constraints) => {
     const pointsForSolver = [];
     pointsIds.forEach(pointId => {
@@ -233,6 +255,7 @@ const getPointsAndConstraintsForSolver = (pointsIds, constraints) => {
     return {pointsForSolver, constraintsForSolver};
 }
 
+// Проверяет, существует ли уже аналогичное ограничение в системе
 const sameConstraintExists = (newConstraint) => {
     for (let constraint of Constraints) {
         if (constraint.type === newConstraint.type) {
@@ -271,6 +294,7 @@ const sameConstraintExists = (newConstraint) => {
     return false;
 }
 
+// Выводит список точек в консоль
 const showPoints = (newPoints) => {
     for (let i = 0; i < newPoints.size(); i++) {
         let Point = newPoints.get(i);
@@ -282,6 +306,7 @@ const showPoints = (newPoints) => {
     }
 }
 
+// Изменяет координаты точек после получения решения от солвера
 const changeCoordinatesAfterSolution = (newPoints) => {
     for (let i = 0; i < newPoints.size(); i++) {
         let Point = newPoints.get(i);
@@ -299,6 +324,7 @@ const changeCoordinatesAfterSolution = (newPoints) => {
     }
 }    
 
+// Возвращает первое ограничение для точки
 const getFirstConstraintForPoint = (point) => {
     for (let constraint of Constraints) {
         if (checkPointId(point.id, constraint)) {
@@ -308,6 +334,17 @@ const getFirstConstraintForPoint = (point) => {
     return null;
 }
 
+// Возвращает первое ограничение для линии
+const getFirstConstraintForLine = (line) => {
+    for (let constraint of Constraints) {
+        if (checkPointId(line.point1.id, constraint) || checkPointId(line.point2.id, constraint)) {
+            return constraint;
+        }
+    }
+    return null;
+}
+
+// Функция-обработчик нажатия на канвас
 const canvasOnClick = (e) => {
     e.preventDefault();
 
@@ -589,6 +626,7 @@ const canvasOnClick = (e) => {
     }
 }
 
+// Функция - обработчик перемещения курсора
 const canvasOnMouseMove = (e) => {
     canvasTopLeft = new Point(canvas.getBoundingClientRect().x, canvas.getBoundingClientRect().y, false);
     clickPoint = new Point(e.clientX - canvasTopLeft.x, e.clientY - canvasTopLeft.y, false);
@@ -602,13 +640,9 @@ const canvasOnMouseMove = (e) => {
     if (mode === ModesEnum.moving_down_point) {
         // movePoint(movingPoint, clickPoint.x, clickPoint.y)
         // draw();
-
-
   
         movePoint(movingPoint, clickPoint.x, clickPoint.y);
-
         const constraint = getFirstConstraintForPoint(movingPoint);
-        console.log(constraint);
         if (constraint !== null) {
             const {connectedPointIds, connectedConstraints} = getConnectedPointsAndConstraints(constraint);
             const {pointsForSolver, constraintsForSolver} = getPointsAndConstraintsForSolver(connectedPointIds, connectedConstraints);
@@ -617,11 +651,26 @@ const canvasOnMouseMove = (e) => {
             const newPoints = Module['Solver'](JSON.stringify(solverJson));
             changeCoordinatesAfterSolution(newPoints);
         } 
-        
+        draw();
+    }
+
+    if (mode === ModesEnum.moving_down_line) {
+        moveLine(movingLine, clickPoint.x - prevPoint.x, clickPoint.y - prevPoint.y);
+        prevPoint = clickPoint;
+        const constraint = getFirstConstraintForLine(movingLine);
+        if (constraint !== null) {
+            const {connectedPointIds, connectedConstraints} = getConnectedPointsAndConstraints(constraint);
+            const {pointsForSolver, constraintsForSolver} = getPointsAndConstraintsForSolver(connectedPointIds, connectedConstraints);
+            const solverJson = new SolverJson(pointsForSolver, constraintsForSolver, [movingLine.point1.id, movingLine.point2.id]);
+            console.log(solverJson);
+            const newPoints = Module['Solver'](JSON.stringify(solverJson));
+            changeCoordinatesAfterSolution(newPoints);
+        } 
         draw();
     }
 }
 
+// Функция - обработчик нажатия правой кнопки мыши
 const canvasOnRightClick = (e) => {
     e.preventDefault();
 
@@ -635,9 +684,9 @@ const canvasOnRightClick = (e) => {
     }
 }
 
+// Функция - обработчик нажатия и удержания левой кнопки мыши
 const canvasOnMouseDown = (e) => {
     e.preventDefault();
-    console.log("kekkk");
     if (mode === ModesEnum.moving) {
         clickPoint = new Point(e.clientX - canvasTopLeft.x, e.clientY - canvasTopLeft.y, false);
         const {minPoint: point, minS: distance} = getNearestPoint(clickPoint);
@@ -645,38 +694,41 @@ const canvasOnMouseDown = (e) => {
             prevMode = mode;
             mode = ModesEnum.moving_down_point;
             movingPoint = point;
-            // movePoint(point, newX, newY);
+        } else {
+            const {minLine: line, minS: dist} = getNearestLine(clickPoint);
+            if (line && dist < epsDistMove) {
+                prevMode = mode;
+                mode = ModesEnum.moving_down_line;
+                movingLine = line;
+                prevPoint = clickPoint;
+            }
         }
     }
 }
 
+// Функция - обработчик отпускания левой кнопки мыши
 const canvasOnMouseUp = (e) => {
-    canvasTopLeft = new Point(canvas.getBoundingClientRect().x, canvas.getBoundingClientRect().y, false);
-    clickPoint = new Point(e.clientX - canvasTopLeft.x, e.clientY - canvasTopLeft.y, false);
-    console.log('heeeeyyy');
-    console
-    if (mode === ModesEnum.moving_down_point) {
-        const constraint = getFirstConstraintForPoint(movingPoint);
-        if (constraint !== null) {
-            const {connectedPointIds, connectedConstraints} = getConnectedPointsAndConstraints(constraint);
-            const {pointsForSolver, constraintsForSolver} = getPointsAndConstraintsForSolver(connectedPointIds, connectedConstraints);
-            const solverJson = new SolverJson(pointsForSolver, constraintsForSolver, [movingPoint.id, 0]);
-            console.log(solverJson);
-            const newPoints = Module['Solver'](JSON.stringify(solverJson));
-            changeCoordinatesAfterSolution(newPoints);
-        }
-        
-        draw();
+    if (mode === ModesEnum.moving_down_point || mode === ModesEnum.moving_down_line) {
         prevMode = mode;
         mode = ModesEnum.moving;
     }
 }
 
+// Задает новые координаты точки point
 const movePoint = (point, newX, newY) => {
     point.x = newX;
     point.y = newY;
 }
 
+// Изменяет имеющиеся координаты концов линий
+const moveLine = (line, deltaX, deltaY) => {
+    line.point1.x += deltaX;
+    line.point1.y += deltaY;
+    line.point2.x += deltaX;
+    line.point2.y += deltaY;
+}
+
+// Дальше идут функции - обработчки нажатий на кнопки над канвасом
 const button_lines_onClick = (e) => {
     prevMode = mode;
     mode = ModesEnum.line;
@@ -690,13 +742,6 @@ const button_points_onClick = (e) => {
 const button_default_onClick = (e) => {
     prevMode = mode;
     mode = ModesEnum.default;
-
-    // //const json = `{"Points":[{"x":403.5,"y":156.50245154530512,"id":2,"fixed":false},{"x":494.5,"y":156.50245154530512,"id":3,"fixed":false},{"x":886.5,"y":156.5024515453051,"id":4,"fixed":false},{"x":31.5,"y":436.5,"id":1,"fixed":false}],"Constraints":[{"point1":2,"point2":3,"point3":0,"point4":0,"Type":"Horizontal_line","value":0},{"point1":3,"point2":4,"point3":0,"point4":0,"Type":"Horizontal_line","value":0},{"point1":3,"point2":4,"point3":1,"point4":2,"Type":"Perpendicularity_of_2_lines","value":0}],"MovablePoints_id":[1,0]}`;
-    // const json = `{"Points":[{"x":186.5,"y":148.69101063626525,"id":1,"fixed":false},{"x":644.1078155936365,"y":148.69101063626525,"id":2,"fixed":false},{"x":675.4993986095989,"y":333.50010215221425,"id":3,"fixed":false},{"x":158.44742109835744,"y":421.3259427986679,"id":4,"fixed":false},{"x":761.5,"y":669.5,"id":5,"fixed":false},{"x":987.5,"y":210.5,"id":6,"fixed":false}],"Constraints":[{"point1":1,"point2":2,"point3":0,"point4":0,"Type":"Horizontal_line","value":0},{"point1":2,"point2":3,"point3":3,"point4":4,"Type":"Perpendicularity_of_2_lines","value":0},{"point1":3,"point2":4,"point3":5,"point4":6,"Type":"Parallelism_of_2_lines","value":0}],"MovablePoints_id":[5,0]}`;
-    // const newPoints = Module['Solver'](json);
-    // // console.log(newPoints);
-    // showPoints(newPoints);
-    draw();
 }
 
 const button_horizontal_line_onClick = (e) => {
@@ -737,9 +782,9 @@ const button_point_to_line_onClick = (e) => {
 const button_moving_onClick = (e) => {
     prevMode = mode;
     mode = ModesEnum.moving;
-    console.log(mode);
 }
 
+// Навешивание функций-обработчиков на события
 canvas.addEventListener('click', canvasOnClick);
 canvas.addEventListener('contextmenu', canvasOnRightClick)
 canvas.addEventListener('mousemove', canvasOnMouseMove);
