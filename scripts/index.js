@@ -17,6 +17,7 @@ const button_distance = document.getElementById("button_distance");
 const button_angle = document.getElementById("button_angle");
 const button_point_to_line = document.getElementById("button_point_to_line");
 const button_moving = document.getElementById("button_moving");
+const button_fix_point = document.getElementById("button_fix_point");
 
 // Получаем контекст для рисования
 const ctx = canvas.getContext('2d');
@@ -47,7 +48,9 @@ const ModesEnum = {
 
     moving: 16,
     moving_down_point: 17,
-    moving_down_line: 18
+    moving_down_line: 18,
+
+    limitations_fix_point: 19
 };
   
 
@@ -575,6 +578,13 @@ const canvasOnClick = (e) => {
             mode = ModesEnum.limitations_point_to_line;
             break;
         }
+
+        case ModesEnum.limitations_fix_point: {
+            const {minPoint: point, minS: distance} = getNearestPoint(clickPoint);
+            if (!point || distance > epsDist) return;
+
+            point.fixed = true;
+        }
     }
 }
 
@@ -731,6 +741,11 @@ const button_moving_onClick = (e) => {
     mode = ModesEnum.moving;
 }
 
+const button_fix_point_onClick = (e) => {
+    prevMode = mode;
+    mode = ModesEnum.limitations_fix_point;
+}
+
 // Навешивание функций-обработчиков на события
 canvas.addEventListener('click', canvasOnClick);
 canvas.addEventListener('contextmenu', canvasOnRightClick)
@@ -749,3 +764,4 @@ button_distance.addEventListener('click', button_distance_onClick);
 button_angle.addEventListener('click', button_angle_onClick);
 button_point_to_line.addEventListener('click', button_point_to_line_onClick);
 button_moving.addEventListener('click', button_moving_onClick);
+button_fix_point.addEventListener('click', button_fix_point_onClick);
