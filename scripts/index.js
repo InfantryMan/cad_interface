@@ -344,6 +344,22 @@ const getFirstConstraintForLine = (line) => {
     return null;
 }
 
+const formSolverJson = (constraint, movablePoints) => {
+    const {connectedPointIds, connectedConstraints} = getConnectedPointsAndConstraints(constraint);
+    const {pointsForSolver, constraintsForSolver} = getPointsAndConstraintsForSolver(connectedPointIds, connectedConstraints);
+    const solverJson = new SolverJson(pointsForSolver, constraintsForSolver, movablePoints);
+    console.log(solverJson);
+    return solverJson;
+}
+
+const addConstraint = (constraint) => {
+    if (sameConstraintExists(constraint)) {
+        alert("such constraint already exists");
+        return null;
+    }
+    Constraints.push(constraint);
+}
+
 // Функция-обработчик нажатия на канвас
 const canvasOnClick = (e) => {
     e.preventDefault();
@@ -387,6 +403,7 @@ const canvasOnClick = (e) => {
             const {minLine: line, minS: distance} = getNearestLine(clickPoint);
             if (!line || distance > epsDist) return;
 
+            clickLine = line;
             let constraint;
             if (mode === ModesEnum.limitations_vertical_line) {
                 constraint = new Constraint(ConstraintTypes.Vertical_line, line.point1, line.point2);
@@ -394,22 +411,10 @@ const canvasOnClick = (e) => {
                 constraint = new Constraint(ConstraintTypes.Horizontal_line, line.point1, line.point2);
             }
 
-            if (sameConstraintExists(constraint)) {
-                console.log("such constraint already exists");
-                return;
-            }
-
-            Constraints.push(constraint);
-
-            const {connectedPointIds, connectedConstraints} = getConnectedPointsAndConstraints(constraint);
-            const {pointsForSolver, constraintsForSolver} = getPointsAndConstraintsForSolver(connectedPointIds, connectedConstraints);
-
-            const solverJson = new SolverJson(pointsForSolver, constraintsForSolver, [line.point1.id, line.point2.id]);
-
-            console.log(solverJson);
-
+            if (addConstraint(constraint) === null) return;
+            const solverJson = formSolverJson(constraint, [clickLine.point1.id, clickLine.point2.id]);
+            if (solverJson === null) return;
             const newPoints = Module['Solver'](JSON.stringify(solverJson));
-
             changeCoordinatesAfterSolution(newPoints);
 
             draw();
@@ -442,25 +447,12 @@ const canvasOnClick = (e) => {
             const constraintType = (mode === ModesEnum.limitations_perpendicularity_second) ?
                 ConstraintTypes.Perpendicularity_of_2_lines :
                 ConstraintTypes.Parallelism_of_2_lines;
-
             const constraint = new Constraint(constraintType, prevLine.point1, prevLine.point2, clickLine.point1, clickLine.point2);
 
-            if (sameConstraintExists(constraint)) {
-                console.log("such constraint already exists");
-                return;
-            }
-
-            Constraints.push(constraint);
-
-            const {connectedPointIds, connectedConstraints} = getConnectedPointsAndConstraints(constraint);
-            const {pointsForSolver, constraintsForSolver} = getPointsAndConstraintsForSolver(connectedPointIds, connectedConstraints);
-
-            const solverJson = new SolverJson(pointsForSolver, constraintsForSolver, [line.point1.id, 0]);
-
-            console.log(solverJson);
-
+            if (addConstraint(constraint) === null) return;
+            const solverJson = formSolverJson(constraint, [clickLine.point1.id, clickLine.point2.id]);
+            if (solverJson === null) return;
             const newPoints = Module['Solver'](JSON.stringify(solverJson));
-
             changeCoordinatesAfterSolution(newPoints);
 
             draw();
@@ -470,9 +462,7 @@ const canvasOnClick = (e) => {
                 mode = ModesEnum.limitations_perpendicularity;
             else 
                 mode = ModesEnum.limitations_parallelism;
-
             break;
-
         }
 
         case ModesEnum.limitations_distance: {
@@ -497,22 +487,10 @@ const canvasOnClick = (e) => {
 
             const constraint = new Constraint(ConstraintTypes.Distance_between_2_points, clickLine.point1, clickLine.point2, 0, 0, lineLength);
 
-            if (sameConstraintExists(constraint)) {
-                console.log("such constraint already exists");
-                return;
-            }
-
-            Constraints.push(constraint);
-
-            const {connectedPointIds, connectedConstraints} = getConnectedPointsAndConstraints(constraint);
-            const {pointsForSolver, constraintsForSolver} = getPointsAndConstraintsForSolver(connectedPointIds, connectedConstraints);
-
-            const solverJson = new SolverJson(pointsForSolver, constraintsForSolver, [line.point1.id, line.point2.id]);
-
-            console.log(solverJson);
-
+            if (addConstraint(constraint) === null) return;
+            const solverJson = formSolverJson(constraint, [clickLine.point1.id, clickLine.point2.id]);
+            if (solverJson === null) return;
             const newPoints = Module['Solver'](JSON.stringify(solverJson));
-
             changeCoordinatesAfterSolution(newPoints);
 
             draw();
@@ -554,29 +532,16 @@ const canvasOnClick = (e) => {
 
             const constraint = new Constraint(ConstraintTypes.Angle_between_2_lines, prevLine.point1, prevLine.point2, clickLine.point1, clickLine.point2, angleValue);
 
-            if (sameConstraintExists(constraint)) {
-                console.log("such constraint already exists");
-                return;
-            }
-
-            Constraints.push(constraint);
-
-            const {connectedPointIds, connectedConstraints} = getConnectedPointsAndConstraints(constraint);
-            const {pointsForSolver, constraintsForSolver} = getPointsAndConstraintsForSolver(connectedPointIds, connectedConstraints);
-
-            const solverJson = new SolverJson(pointsForSolver, constraintsForSolver, [line.point1.id, line.point2.id]);
-
-            console.log(solverJson);
-
+            if (addConstraint(constraint) === null) return;
+            const solverJson = formSolverJson(constraint, [clickLine.point1.id, clickLine.point2.id]);
+            if (solverJson === null) return;
             const newPoints = Module['Solver'](JSON.stringify(solverJson));
-
             changeCoordinatesAfterSolution(newPoints);
 
             draw();
 
             prevMode = mode;
             mode = ModesEnum.limitations_angle;
-
             break;
         }
 
@@ -597,30 +562,17 @@ const canvasOnClick = (e) => {
             clickLine = line;
 
             const constraint = new Constraint(ConstraintTypes.Belonging_point_to_line, clickLine.point1, clickLine.point2, prevPoint);
-            if (sameConstraintExists(constraint)) {
-                console.log("such constraint already exists");
-                return;
-            }
-
-            Constraints.push(constraint);
-
-            const {connectedPointIds, connectedConstraints} = getConnectedPointsAndConstraints(constraint);
-            const {pointsForSolver, constraintsForSolver} = getPointsAndConstraintsForSolver(connectedPointIds, connectedConstraints);
-
-            console.log(prevPoint);
-            const solverJson = new SolverJson(pointsForSolver, constraintsForSolver, [prevPoint.id]);
-
-            console.log(solverJson);
-
+            
+            if (addConstraint(constraint) === null) return;
+            const solverJson = formSolverJson(constraint, [prevPoint.id, 0]);
+            if (solverJson === null) return;
             const newPoints = Module['Solver'](JSON.stringify(solverJson));
-
             changeCoordinatesAfterSolution(newPoints);
-
+            
             draw();
 
             prevMode = mode;
             mode = ModesEnum.limitations_point_to_line;
-
             break;
         }
     }
@@ -644,9 +596,7 @@ const canvasOnMouseMove = (e) => {
         movePoint(movingPoint, clickPoint.x, clickPoint.y);
         const constraint = getFirstConstraintForPoint(movingPoint);
         if (constraint !== null) {
-            const {connectedPointIds, connectedConstraints} = getConnectedPointsAndConstraints(constraint);
-            const {pointsForSolver, constraintsForSolver} = getPointsAndConstraintsForSolver(connectedPointIds, connectedConstraints);
-            const solverJson = new SolverJson(pointsForSolver, constraintsForSolver, [movingPoint.id, 0]);
+            const solverJson = formSolverJson(constraint, [movingPoint.id, 0]);
             console.log(solverJson);
             const newPoints = Module['Solver'](JSON.stringify(solverJson));
             changeCoordinatesAfterSolution(newPoints);
@@ -659,9 +609,7 @@ const canvasOnMouseMove = (e) => {
         prevPoint = clickPoint;
         const constraint = getFirstConstraintForLine(movingLine);
         if (constraint !== null) {
-            const {connectedPointIds, connectedConstraints} = getConnectedPointsAndConstraints(constraint);
-            const {pointsForSolver, constraintsForSolver} = getPointsAndConstraintsForSolver(connectedPointIds, connectedConstraints);
-            const solverJson = new SolverJson(pointsForSolver, constraintsForSolver, [movingLine.point1.id, movingLine.point2.id]);
+            const solverJson = formSolverJson(constraint, [movingLine.point1.id, movingLine.point2.id]);
             console.log(solverJson);
             const newPoints = Module['Solver'](JSON.stringify(solverJson));
             changeCoordinatesAfterSolution(newPoints);
@@ -679,7 +627,6 @@ const canvasOnRightClick = (e) => {
             Points.delete(prevPoint.id);
         }
         mode = ModesEnum.line;
-        clear();
         draw();
     }
 }
