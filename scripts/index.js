@@ -589,7 +589,9 @@ const canvasOnClick = (e) => {
             const {minPoint: point, minS: distance} = getNearestPoint(clickPoint);
             if (!point || distance > epsDist) return;
 
+            console.log(point);
             point.fixed = true;
+            break;
         }
 
         case ModesEnum.delete_point: {
@@ -598,6 +600,7 @@ const canvasOnClick = (e) => {
 
             Points.get(point.id).deleted = true;
             draw();
+            break;
         }
 
         case ModesEnum.delete_line: {
@@ -610,6 +613,7 @@ const canvasOnClick = (e) => {
                 }
             }
             draw();
+            break;
         }
     }
 }
@@ -617,18 +621,21 @@ const canvasOnClick = (e) => {
 // Функция - обработчик перемещения курсора
 const canvasOnMouseMove = (e) => {
     canvasTopLeft = new Point(canvas.getBoundingClientRect().x, canvas.getBoundingClientRect().y, false);
+    const prevPointForMoving = clickPoint;
     clickPoint = new Point(e.clientX - canvasTopLeft.x, e.clientY - canvasTopLeft.y, false);
 
     if (mode === ModesEnum.drawingLine) {
         draw();
         const line = new Line(prevPoint, clickPoint);
         line.draw(ctx);
+        return;
     }
+
 
     if (mode === ModesEnum.moving_down_point) {
         // movePoint(movingPoint, clickPoint.x, clickPoint.y)
         // draw();
-  
+        if (movingPoint.fixed) return;
         movePoint(movingPoint, clickPoint.x, clickPoint.y);
         const constraint = getFirstConstraintForPoint(movingPoint);
         if (constraint !== null) {
@@ -638,11 +645,19 @@ const canvasOnMouseMove = (e) => {
             changeCoordinatesAfterSolution(newPoints);
         } 
         draw();
+        return;
     }
 
     if (mode === ModesEnum.moving_down_line) {
-        moveLine(movingLine, clickPoint.x - prevPoint.x, clickPoint.y - prevPoint.y);
-        prevPoint = clickPoint;
+        if (movingLine.point1.fixed && movingLine.point2.fixed) return;
+        if (movingLine.point1.fixed) { 
+            movePointOnDelta(movingLine.point2, clickPoint.x - prevPointForMoving.x, clickPoint.y - prevPointForMoving.y); 
+        } else if (movingLine.point2.fixed) {
+            movePointOnDelta(movingLine.point1, clickPoint.x - prevPointForMoving.x, clickPoint.y - prevPointForMoving.y); 
+        } else {
+            moveLine(movingLine, clickPoint.x - prevPointForMoving.x, clickPoint.y - prevPointForMoving.y);
+        }
+        
         const constraint = getFirstConstraintForLine(movingLine);
         if (constraint !== null) {
             const solverJson = formSolverJson(constraint, [movingLine.point1.id, movingLine.point2.id]);
@@ -651,6 +666,7 @@ const canvasOnMouseMove = (e) => {
             changeCoordinatesAfterSolution(newPoints);
         } 
         draw();
+        return;
     }
 }
 
@@ -701,6 +717,11 @@ const canvasOnMouseUp = (e) => {
 const movePoint = (point, newX, newY) => {
     point.x = newX;
     point.y = newY;
+}
+
+const movePointOnDelta = (point, deltaX, deltaY) => {
+    point.x += deltaX;
+    point.y += deltaY;
 }
 
 // Изменяет имеющиеся координаты концов линий
