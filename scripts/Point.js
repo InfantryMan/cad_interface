@@ -4,6 +4,7 @@ class Point {
         this.y = y;
         this.radius = 5;
         this.fixed = false;
+        this.deleted = false;
         if (uniq) this._id = Point.counter;
     }
 

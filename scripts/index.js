@@ -18,6 +18,8 @@ const button_angle = document.getElementById("button_angle");
 const button_point_to_line = document.getElementById("button_point_to_line");
 const button_moving = document.getElementById("button_moving");
 const button_fix_point = document.getElementById("button_fix_point");
+const button_delete_point = document.getElementById("button_delete_point");
+const button_delete_line = document.getElementById("button_delete_line");
 
 // Получаем контекст для рисования
 const ctx = canvas.getContext('2d');
@@ -50,7 +52,10 @@ const ModesEnum = {
     moving_down_point: 17,
     moving_down_line: 18,
 
-    limitations_fix_point: 19
+    limitations_fix_point: 19,
+
+    delete_point: 20,
+    delete_line: 21
 };
   
 
@@ -119,10 +124,11 @@ const clear = () => {
 const draw = () => {
     clear();
     for (let p of Points.values()) {
-        p.draw(ctx);
+        if (!p.deleted) p.draw(ctx);
     }
     Lines.forEach(element => {
-        element.draw(ctx);
+        console.log(element);
+        if (!element.deleted) element.draw(ctx);
     });
 }
 
@@ -585,6 +591,26 @@ const canvasOnClick = (e) => {
 
             point.fixed = true;
         }
+
+        case ModesEnum.delete_point: {
+            const {minPoint: point, minS: distance} = getNearestPoint(clickPoint);
+            if (!point || distance > epsDist) return;
+
+            Points.get(point.id).deleted = true;
+            draw();
+        }
+
+        case ModesEnum.delete_line: {
+            const {minLine: line, minS: distance} = getNearestLine(clickPoint);
+            if (!line || distance > epsDist) return;
+
+            for (let l of Lines) {
+                if (l.point1 === line.point1 && l.point2 === line.point2) {
+                    l.deleted = true;
+                }
+            }
+            draw();
+        }
     }
 }
 
@@ -746,6 +772,16 @@ const button_fix_point_onClick = (e) => {
     mode = ModesEnum.limitations_fix_point;
 }
 
+const button_delete_point_onClick = (e) => {
+    prevMode = mode;
+    mode = ModesEnum.delete_point;
+}
+
+const button_delete_line_onClick = (e) => {
+    prevMode = mode;
+    mode = ModesEnum.delete_line;
+}
+
 // Навешивание функций-обработчиков на события
 canvas.addEventListener('click', canvasOnClick);
 canvas.addEventListener('contextmenu', canvasOnRightClick)
@@ -765,3 +801,5 @@ button_angle.addEventListener('click', button_angle_onClick);
 button_point_to_line.addEventListener('click', button_point_to_line_onClick);
 button_moving.addEventListener('click', button_moving_onClick);
 button_fix_point.addEventListener('click', button_fix_point_onClick);
+button_delete_point.addEventListener('click', button_delete_point_onClick);
+button_delete_line.addEventListener('click', button_delete_line_onClick);
