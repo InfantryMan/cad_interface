@@ -15,13 +15,36 @@ body {
 	font-size: 1em;
 }
 
-#canvas {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    margin: auto; 
+#spacer {
+    width: 5px; /* Расстояние между колонками */
+}
 
-    background: grey;
+#maket {
+    width: 100%; /* Ширина всей таблицы */
+
+}
+TD {
+    vertical-align: top; /* Вертикальное выравнивание в ячейках */
+    padding: 5px; /* Поля вокруг ячеек */
+}
+
+TD#leftcol {
+    width: 200px; /* Ширина левой колонки */
+    background: #ccc; /* Цвет фона левой колонки */
+    border: 1px solid #000; /* Параметры рамки */
+}
+
+TD#rightcol {
+    border: 1px solid #000; /* Параметры рамки */
+    padding: 0px;
+}
+
+button {
+    display: block;
+    margin: 5px auto;
+    width: 100%;
+}
+
+#canvas {
+    width: 100%;
 }

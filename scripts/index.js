@@ -73,12 +73,6 @@ let clickLine, prevLine;    // аналогично
 
 let movingPoint, movingLine;    // movingPoint - перемещаемая точка, movingLine - перемещаемая линия
 
-let canvasHeight = window.innerHeight / 5 * 4;  // высота канваса
-let canvasWidth  = window.innerWidth / 5 * 4;   // ширина канваса
-
-canvas.width  = canvasWidth;
-canvas.height = canvasHeight;
-
 // Координаты верхней левой точки канваса, необходимо для получения относительных координат на канвасе
 let canvasTopLeft = new Point(canvas.getBoundingClientRect().x, canvas.getBoundingClientRect().y, false); 
 
@@ -115,7 +109,7 @@ window.addEventListener("resize", () => {
 // Очищает канвас
 const clear = () => {
     ctx.save();
-    ctx.fillStyle = "grey";
+    ctx.fillStyle = "white";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.restore();
 }
@@ -124,6 +118,7 @@ const clear = () => {
 const draw = () => {
     clear();
     for (let p of Points.values()) {
+        console.log(p);
         if (!p.deleted) p.draw(ctx);
     }
     Lines.forEach(element => {
