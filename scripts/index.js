@@ -174,11 +174,9 @@ const clear = () => {
 const draw = () => {
     clear();
     for (let p of Points.values()) {
-        console.log(p);
         if (!p.deleted) p.draw(ctx);
     }
     Lines.forEach(element => {
-        console.log(element);
         if (!element.deleted) element.draw(ctx);
     });
 }
@@ -599,11 +597,15 @@ const canvasOnClick = (e) => {
                     alert("Неверный ввод. Введите действительное число, которое больше 0.");
                 } 
             }
+            const angleCos = Math.cos(angleValue / 57,2958);
+            console.log("angle = ", angleValue);
+            console.log("cos = ", angleCos);
 
-            const constraint = new Constraint(ConstraintTypes.Angle_between_2_lines, prevLine.point1, prevLine.point2, clickLine.point1, clickLine.point2, angleValue);
+            const constraint = new Constraint(ConstraintTypes.Angle_between_2_lines, prevLine.point1, prevLine.point2, clickLine.point1, clickLine.point2, angleCos);
 
             if (addConstraint(constraint) === null) return;
             const solverJson = formSolverJson(constraint, [clickLine.point1.id, clickLine.point2.id]);
+            console.log(solverJson);
             if (solverJson === null) return;
             const newPoints = Module['Solver'](JSON.stringify(solverJson));
             changeCoordinatesAfterSolution(newPoints);
@@ -687,8 +689,6 @@ const canvasOnMouseMove = (e) => {
     canvasTopLeft = new Point(canvas.getBoundingClientRect().x, canvas.getBoundingClientRect().y, false);
     const prevPointForMoving = clickPoint;
     clickPoint = new Point(e.clientX - canvasTopLeft.x, e.clientY - canvasTopLeft.y, false);
-    console.log("canvas top left ", canvasTopLeft);
-    console.log("clickPoint ", clickPoint);
 
     if (mode === ModesEnum.drawingLine) {
         draw();
