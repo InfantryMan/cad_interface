@@ -9,24 +9,77 @@ import SolverJson from "./SolverJson";
 const canvas = document.getElementById("canvas");
 const button_lines = document.getElementById("button_lines");
 const button_points = document.getElementById("button_points");
-const button_default = document.getElementById("button_default");
 const button_horizontal_line = document.getElementById("button_horizontal_line");
 const button_parallelism = document.getElementById("button_parallelism");
 const button_perpendicularity = document.getElementById("button_perpendicularity");
 const button_distance = document.getElementById("button_distance");
 const button_angle = document.getElementById("button_angle");
 const button_point_to_line = document.getElementById("button_point_to_line");
-const button_moving = document.getElementById("button_moving");
 const button_fix_point = document.getElementById("button_fix_point");
 const button_delete_point = document.getElementById("button_delete_point");
 const button_delete_line = document.getElementById("button_delete_line");
+
+const button_elements = [
+    button_lines, 
+    button_points, 
+    button_horizontal_line,
+    button_vertical_line, 
+    button_parallelism, 
+    button_perpendicularity,
+    button_distance,
+    button_angle,
+    button_point_to_line,
+    button_fix_point,
+    button_delete_point,
+    button_delete_line
+];
+
+const makeButtonActive = (button_element) => {
+    button_element.style.backgroundColor = "rgb(115, 193, 115)";
+}
+
+const makeButtonDefault = (button_element) => {
+    button_element.style.backgroundColor = "";
+}
+
+const makeButtonsDefault = () => {
+    button_elements.forEach((button) => makeButtonDefault(button));
+}
+
+const current_mode_element = document.getElementById("current_mode");
+current_mode_element.innerHTML = "Перемещение";
+
+const getCurrentModeElementInnerHTML = (mode) => {
+    switch(mode) {
+        case ModesEnum.line:
+        case ModesEnum.drawingLine: return "Отрезки";
+        case ModesEnum.point: return "Точки";
+        case ModesEnum.limitations_horizontal_line: return "Горизонтальность отрезка";
+        case ModesEnum.limitations_vertical_line: return "Вертикальность отрезка";
+        case ModesEnum.limitations_parallelism: return "Параллельность: 1 отрезок";
+        case ModesEnum.limitations_parallelism_second: return "Параллельность: 2 отрезок";
+        case ModesEnum.limitations_perpendicularity: return "Перпендикулярность: 1 отрезок";
+        case ModesEnum.limitations_perpendicularity_second: return "Перпендикулярность: 2 отрезок";
+        case ModesEnum.limitations_distance: return "Расстояние";
+        case ModesEnum.limitations_angle: return "Угол: 1 отрезок";
+        case ModesEnum.limitations_angle_second: return "Угол: 2 отрезок";
+        case ModesEnum.limitations_point_to_line: return "Принадлежность точки отрезку: точка";
+        case ModesEnum.limitations_point_to_line_second: return "Принадлежность точки отрезку: отрезок";
+        case ModesEnum.moving:
+        case ModesEnum.moving_down_line:
+        case ModesEnum.moving_down_point: return "Перемещение";
+        case ModesEnum.limitations_fix_point: return "Фиксация точки";
+        case ModesEnum.delete_line: return "Удаление линии";
+        case ModesEnum.delete_point: return "Удаление точки";
+        default: return "Перемещение";
+    }
+}
 
 // Получаем контекст для рисования
 const ctx = canvas.getContext('2d');
 
 // Состояния работы интерфейса
 const ModesEnum = {
-    default: 1,
     line: 2,
     drawingLine: 3,
     point: 4,
@@ -66,7 +119,7 @@ let Points = new Map(); // ассоциативный контейнер, где
 let Lines = [];         // массив из объектов класса Line
 let Constraints = [];   // массив из объектов класса Constraint
 
-let mode = ModesEnum.default, prevMode; // mode - текущее состояние, prevMode - предыдущее состояние
+let mode = ModesEnum.moving, prevMode; // mode - текущее состояние, prevMode - предыдущее состояние
 
 let clickPoint, prevPoint;  // clickPoint - точка, на которую нажали, prevPoint - предыдущая точка
 let clickLine, prevLine;    // аналогично
@@ -75,6 +128,9 @@ let movingPoint, movingLine;    // movingPoint - перемещаемая точ
 
 // Координаты верхней левой точки канваса, необходимо для получения относительных координат на канвасе
 let canvasTopLeft = new Point(canvas.getBoundingClientRect().x, canvas.getBoundingClientRect().y, false); 
+
+canvas.height = canvas.parentElement.clientHeight;
+canvas.width = canvas.parentElement.clientWidth;
 
 /*  
     Данный код меняет размер канваса при изменении размеров окна. При желании его можно раскоментить, но тогда
@@ -262,6 +318,13 @@ const getPointsAndConstraintsForSolver = (pointsIds, constraints) => {
 // Проверяет, существует ли уже аналогичное ограничение в системе
 const sameConstraintExists = (newConstraint) => {
     for (let constraint of Constraints) {
+        if (constraint.type === ConstraintTypes.Horizontal_line && newConstraint.type === ConstraintTypes.Vertical_line ||
+            constraint.type === ConstraintTypes.Vertical_line && newConstraint.type === ConstraintTypes.Horizontal_line) {
+                if (constraint.point1.id === newConstraint.point1.id && constraint.point2.id === newConstraint.point2.id) {
+                    return true;
+                }
+            }
+
         if (constraint.type === newConstraint.type) {
             if (constraint.type === ConstraintTypes.Horizontal_line || constraint.type === ConstraintTypes.Vertical_line) {
                 if (constraint.point1.id === newConstraint.point1.id && constraint.point2.id === newConstraint.point2.id) {
@@ -368,7 +431,7 @@ const addConstraint = (constraint) => {
 const canvasOnClick = (e) => {
     e.preventDefault();
 
-    if (mode === ModesEnum.default) return;
+    if (mode === ModesEnum.moving) { return; }
 
     if (mode >= ModesEnum.line && mode <= ModesEnum.point) {
         clickPoint = new Point(e.clientX - canvasTopLeft.x, e.clientY - canvasTopLeft.y);
@@ -379,6 +442,7 @@ const canvasOnClick = (e) => {
                 prevPoint = clickPoint;
                 prevMode = mode;
                 mode = ModesEnum.drawingLine;
+                current_mode_element.innerHTML = getCurrentModeElementInnerHTML(mode);
                 break;
             }
       
@@ -437,7 +501,7 @@ const canvasOnClick = (e) => {
                 mode = ModesEnum.limitations_perpendicularity_second;
             else
                 mode = ModesEnum.limitations_parallelism_second;
-
+            current_mode_element.innerHTML = getCurrentModeElementInnerHTML(mode);
             break;
         }
 
@@ -466,6 +530,7 @@ const canvasOnClick = (e) => {
                 mode = ModesEnum.limitations_perpendicularity;
             else 
                 mode = ModesEnum.limitations_parallelism;
+            current_mode_element.innerHTML = getCurrentModeElementInnerHTML(mode);    
             break;
         }
 
@@ -511,6 +576,7 @@ const canvasOnClick = (e) => {
 
             prevMode = mode;
             mode = ModesEnum.limitations_angle_second;
+            current_mode_element.innerHTML = getCurrentModeElementInnerHTML(mode);
             break;
         }
 
@@ -546,6 +612,7 @@ const canvasOnClick = (e) => {
 
             prevMode = mode;
             mode = ModesEnum.limitations_angle;
+            current_mode_element.innerHTML = getCurrentModeElementInnerHTML(mode);
             break;
         }
 
@@ -556,6 +623,7 @@ const canvasOnClick = (e) => {
             prevPoint = clickPoint = point;
             prevMode = mode;
             mode = ModesEnum.limitations_point_to_line_second;
+            current_mode_element.innerHTML = getCurrentModeElementInnerHTML(mode);
             break;
         }
 
@@ -577,6 +645,7 @@ const canvasOnClick = (e) => {
 
             prevMode = mode;
             mode = ModesEnum.limitations_point_to_line;
+            current_mode_element.innerHTML = getCurrentModeElementInnerHTML(mode);
             break;
         }
 
@@ -618,6 +687,8 @@ const canvasOnMouseMove = (e) => {
     canvasTopLeft = new Point(canvas.getBoundingClientRect().x, canvas.getBoundingClientRect().y, false);
     const prevPointForMoving = clickPoint;
     clickPoint = new Point(e.clientX - canvasTopLeft.x, e.clientY - canvasTopLeft.y, false);
+    console.log("canvas top left ", canvasTopLeft);
+    console.log("clickPoint ", clickPoint);
 
     if (mode === ModesEnum.drawingLine) {
         draw();
@@ -674,7 +745,13 @@ const canvasOnRightClick = (e) => {
             Points.delete(prevPoint.id);
         }
         mode = ModesEnum.line;
+        current_mode_element.innerHTML = getCurrentModeElementInnerHTML(mode);
         draw();
+    } else {
+        prevMode = mode;
+        mode = ModesEnum.moving;
+        current_mode_element.innerHTML = getCurrentModeElementInnerHTML(mode);
+        makeButtonsDefault();
     }
 }
 
@@ -731,71 +808,97 @@ const moveLine = (line, deltaX, deltaY) => {
 const button_lines_onClick = (e) => {
     prevMode = mode;
     mode = ModesEnum.line;
+    current_mode_element.innerHTML = getCurrentModeElementInnerHTML(mode);
+    makeButtonsDefault();
+    makeButtonActive(button_lines);
 }
 
 const button_points_onClick = (e) => {
     prevMode = mode;
     mode = ModesEnum.point;
-}
-
-const button_default_onClick = (e) => {
-    prevMode = mode;
-    mode = ModesEnum.default;
+    current_mode_element.innerHTML = getCurrentModeElementInnerHTML(mode);
+    makeButtonsDefault();
+    makeButtonActive(button_points);
 }
 
 const button_horizontal_line_onClick = (e) => {
     prevMode = mode;
     mode = ModesEnum.limitations_horizontal_line;
+    current_mode_element.innerHTML = getCurrentModeElementInnerHTML(mode);
+    makeButtonsDefault();
+    makeButtonActive(button_horizontal_line);
 }
 
 const button_vertical_line_onClick = (e) => {
     prevMode = mode;
     mode = ModesEnum.limitations_vertical_line;
+    current_mode_element.innerHTML = getCurrentModeElementInnerHTML(mode);
+    makeButtonsDefault();
+    makeButtonActive(button_vertical_line);
 }
 
 const button_parallelism_onClick = (e) => {
     prevMode = mode;
     mode = ModesEnum.limitations_parallelism;
+    current_mode_element.innerHTML = getCurrentModeElementInnerHTML(mode);
+    makeButtonsDefault();
+    makeButtonActive(button_parallelism);
 }
 
 const button_perpendicularity_onClick = (e) => {
     prevMode = mode;
     mode = ModesEnum.limitations_perpendicularity;
+    current_mode_element.innerHTML = getCurrentModeElementInnerHTML(mode);
+    makeButtonsDefault();
+    makeButtonActive(button_perpendicularity);
 }
 
 const button_distance_onClick = (e) => {
     prevMode = mode;
     mode = ModesEnum.limitations_distance;
+    current_mode_element.innerHTML = getCurrentModeElementInnerHTML(mode);
+    makeButtonsDefault();
+    makeButtonActive(button_distance);
 }
 
 const button_angle_onClick = (e) => {
     prevMode = mode;
     mode = ModesEnum.limitations_angle;
+    current_mode_element.innerHTML = getCurrentModeElementInnerHTML(mode);
+    makeButtonsDefault();
+    makeButtonActive(button_angle);
 }
 
 const button_point_to_line_onClick = (e) => {
     prevMode = mode;
     mode = ModesEnum.limitations_point_to_line;
-}
-
-const button_moving_onClick = (e) => {
-    prevMode = mode;
-    mode = ModesEnum.moving;
+    current_mode_element.innerHTML = getCurrentModeElementInnerHTML(mode);
+    makeButtonsDefault();
+    makeButtonActive(button_point_to_line);
 }
 
 const button_fix_point_onClick = (e) => {
     prevMode = mode;
     mode = ModesEnum.limitations_fix_point;
+    current_mode_element.innerHTML = getCurrentModeElementInnerHTML(mode);
+    makeButtonsDefault();
+    makeButtonActive(button_fix_point);
 }
 
 const button_delete_point_onClick = (e) => {
     prevMode = mode;
     mode = ModesEnum.delete_point;
+    current_mode_element.innerHTML = getCurrentModeElementInnerHTML(mode);
+    makeButtonsDefault();
+    makeButtonActive(button_delete_point);
 }
 
 const button_delete_line_onClick = (e) => {
     prevMode = mode;
     mode = ModesEnum.delete_line;
+    current_mode_element.innerHTML = getCurrentModeElementInnerHTML(mode);
+    makeButtonsDefault();
+    makeButtonActive(button_delete_line);
 }
 
 // Навешивание функций-обработчиков на события
@@ -807,7 +910,6 @@ canvas.addEventListener('mouseup', canvasOnMouseUp);
 
 button_lines.addEventListener('click', button_lines_onClick);
 button_points.addEventListener('click', button_points_onClick);
-button_default.addEventListener('click', button_default_onClick);
 button_horizontal_line.addEventListener('click', button_horizontal_line_onClick);
 button_vertical_line.addEventListener('click', button_vertical_line_onClick);
 button_parallelism.addEventListener('click', button_parallelism_onClick);
@@ -815,7 +917,6 @@ button_perpendicularity.addEventListener('click', button_perpendicularity_onClic
 button_distance.addEventListener('click', button_distance_onClick);
 button_angle.addEventListener('click', button_angle_onClick);
 button_point_to_line.addEventListener('click', button_point_to_line_onClick);
-button_moving.addEventListener('click', button_moving_onClick);
 button_fix_point.addEventListener('click', button_fix_point_onClick);
 button_delete_point.addEventListener('click', button_delete_point_onClick);
 button_delete_line.addEventListener('click', button_delete_line_onClick);
