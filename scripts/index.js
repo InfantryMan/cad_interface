@@ -129,6 +129,17 @@ let movingPoint, movingLine;    // movingPoint - перемещаемая точ
 // Координаты верхней левой точки канваса, необходимо для получения относительных координат на канвасе
 let canvasTopLeft = new Point(canvas.getBoundingClientRect().x, canvas.getBoundingClientRect().y, false); 
 
+let highlightedLine;
+let highlightedPoint;
+
+const line_default_color = "#000000";
+const line_hightlight_color = "#00FF00";
+const line_constraint_color = "#0000FF";
+
+const point_default_color = "#000000";
+const point_hightlight_color = "#00FF00";
+const point_constraint_color = "#0000FF";
+
 canvas.height = canvas.parentElement.clientHeight;
 canvas.width = canvas.parentElement.clientWidth;
 
@@ -492,6 +503,8 @@ const canvasOnClick = (e) => {
             const {minLine: line, minS: distance} = getNearestLine(clickPoint);
             if (!line || distance > epsDist) return;
 
+            line.color = line_constraint_color;
+
             prevLine = line;
             prevMode = mode;
 
@@ -500,6 +513,9 @@ const canvasOnClick = (e) => {
             else
                 mode = ModesEnum.limitations_parallelism_second;
             current_mode_element.innerHTML = getCurrentModeElementInnerHTML(mode);
+
+            draw();
+
             break;
         }
 
@@ -509,6 +525,7 @@ const canvasOnClick = (e) => {
             if (!line || distance > epsDist) return;
 
             clickLine = line;
+            prevLine.color = line_default_color;
 
             const constraintType = (mode === ModesEnum.limitations_perpendicularity_second) ?
                 ConstraintTypes.Perpendicularity_of_2_lines :
@@ -570,11 +587,14 @@ const canvasOnClick = (e) => {
             if (!line || distance > epsDist) return;
 
             clickLine = line;
+            line.color = line_constraint_color;
+
             prevLine = clickLine;
 
             prevMode = mode;
             mode = ModesEnum.limitations_angle_second;
             current_mode_element.innerHTML = getCurrentModeElementInnerHTML(mode);
+            draw();
             break;
         }
 
@@ -609,6 +629,7 @@ const canvasOnClick = (e) => {
             if (solverJson === null) return;
             const newPoints = Module['Solver'](JSON.stringify(solverJson));
             changeCoordinatesAfterSolution(newPoints);
+            prevLine.color = line_default_color;
 
             draw();
 
@@ -697,6 +718,33 @@ const canvasOnMouseMove = (e) => {
         return;
     }
 
+    if (mode === ModesEnum.moving) {
+        const {minPoint: point, minS: pointDistance} = getNearestPoint(clickPoint);
+        if (!point || pointDistance > epsDist) {
+            if (highlightedPoint) {
+                highlightedPoint.color = point_default_color;
+                highlightedPoint = null;
+                draw();
+            }
+        } else if (point) {
+            highlightedPoint = point;
+            highlightedPoint.color = point_hightlight_color;
+            draw();
+        }
+
+        const {minLine: line, minS: distance} = getNearestLine(clickPoint);
+        if (!line || distance > epsDist) {
+            if (highlightedLine) {
+                highlightedLine.color = line_default_color;
+                highlightedLine = null;
+                draw();
+            }
+        } else  if (line) {
+            highlightedLine = line;
+            highlightedLine.color = line_hightlight_color;
+            draw();
+        }
+    }
 
     if (mode === ModesEnum.moving_down_point) {
         // movePoint(movingPoint, clickPoint.x, clickPoint.y)

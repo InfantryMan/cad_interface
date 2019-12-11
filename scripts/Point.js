@@ -2,9 +2,10 @@ class Point {
     constructor(x, y, uniq = true) {
         this.x = x;
         this.y = y;
-        this.radius = 5;
+        this.radius = 4;
         this.fixed = false;
         this.deleted = false;
+        this.color = "#000000"
         if (uniq) this._id = Point.counter;
     }
 
@@ -31,6 +32,7 @@ class Point {
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, true);
         ctx.closePath();
+        ctx.fillStyle = this.color;
         ctx.fill();
     }
 }
